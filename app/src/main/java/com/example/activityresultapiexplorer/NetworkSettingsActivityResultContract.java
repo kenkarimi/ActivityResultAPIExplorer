@@ -18,7 +18,7 @@ public class NetworkSettingsActivityResultContract extends ActivityResultContrac
     @Override
     public Void parseResult(int resultCode, @Nullable Intent intent) {
         /**
-         * Returns null because the android.provider.Settings.ACTION_SETTINGS intent opens your phone Settings but a result is not expected or needed so it returns null.
+         * Returns null because the android.provider.Settings.ACTION_SETTINGS intent opens your phone Settings but a result is not expected or needed.
          * As such, to check whether the network is now available/connected, we have to use the NetworkCapabilities class again. You'll find that the approach is different with the LocationServicesSettingsActivityResultContract.
          */
         return null;
