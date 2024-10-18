@@ -5,15 +5,20 @@ import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentSender;
+import android.graphics.Bitmap;
 import android.location.LocationManager;
 import android.net.ConnectivityManager;
 import android.net.Network;
 import android.net.NetworkCapabilities;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.provider.MediaStore;
 import android.provider.Settings;
+import android.util.Base64;
 import android.view.View;
 import android.widget.Button;
+import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -35,16 +40,21 @@ import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+
 public class MainActivity extends AppCompatActivity {
 
-    Button bNetworkSettingsStartActivityForResult, bLocationServicesStartActivityForResult, bNetworkSettingsActivityResultAPI, bLocationServicesActivityResultAPI;
+    Button bNetworkSettingsStartActivityForResult, bLocationServicesStartActivityForResult, bGalleryStartActivityForResult, bNetworkSettingsActivityResultAPI, bLocationServicesActivityResultAPI, bGalleryActivityResultAPI;
     TextView tvNetworkSettingsStartActivityForResult, tvLocationServicesStartActivityForResult, tvNetworkSettingsActivityResultAPI, tvLocationServicesActivityResultAPI;
+    ImageView ivGalleryStartActivityForResult, ivGalleryActivityResultAPI;
     ConnectivityManager connectivityManager;
     Network network;
     NetworkCapabilities networkCapabilities;
     private boolean gps_enabled, network_enabled, passive_enabled;
     private static int NETWORK_SETTINGS_CODE = 1;
     private static int LOCATION_SERVICES_SETTINGS_CODE = 2;
+    private static int GALLERY_REQUEST_CODE = 3;
     private LocationRequest mLocationRequest;
     private enum Method {
         DEPRECATED,
@@ -54,6 +64,7 @@ public class MainActivity extends AppCompatActivity {
     private Method method = Method.DEFAULT;
     private ActivityResultLauncher<Intent> networkSettingsActivityResultLauncher;
     private ActivityResultLauncher<PendingIntent> locationServicesSettingsActivityResultLauncher;
+    private ActivityResultLauncher<Intent> galleryActivityResultLauncher;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -63,10 +74,14 @@ public class MainActivity extends AppCompatActivity {
         tvNetworkSettingsStartActivityForResult = (TextView) findViewById(R.id.tvNetworkSettingsStartActivityForResult);
         bLocationServicesStartActivityForResult = (Button) findViewById(R.id.bLocationServicesStartActivityForResult);
         tvLocationServicesStartActivityForResult = (TextView) findViewById(R.id.tvLocationServicesStartActivityForResult);
+        bGalleryStartActivityForResult = (Button) findViewById(R.id.bGalleryStartActivityForResult);
+        ivGalleryStartActivityForResult = (ImageView) findViewById(R.id.ivGalleryStartActivityForResult);
         bNetworkSettingsActivityResultAPI = (Button) findViewById(R.id.bNetworkSettingsActivityResultAPI);
         tvNetworkSettingsActivityResultAPI = (TextView) findViewById(R.id.tvNetworkSettingsActivityResultAPI);
         bLocationServicesActivityResultAPI = (Button) findViewById(R.id.bLocationServicesActivityResultAPI);
         tvLocationServicesActivityResultAPI = (TextView) findViewById(R.id.tvLocationServicesActivityResultAPI);
+        bGalleryActivityResultAPI = (Button) findViewById(R.id.bGalleryActivityResultAPI);
+        ivGalleryActivityResultAPI = (ImageView) findViewById(R.id.ivGalleryActivityResultAPI);
 
         bNetworkSettingsStartActivityForResult.setOnClickListener(new View.OnClickListener(){
             @Override
@@ -82,7 +97,13 @@ public class MainActivity extends AppCompatActivity {
                 checkLocationServices();
             }
         });
-
+        bGalleryStartActivityForResult.setOnClickListener(new View.OnClickListener(){
+            @Override
+            public void onClick(View view) {
+                method = Method.DEPRECATED;
+                openGallery();
+            }
+        });
         bNetworkSettingsActivityResultAPI.setOnClickListener(new View.OnClickListener(){
             @Override
             public void onClick(View view) {
@@ -95,6 +116,13 @@ public class MainActivity extends AppCompatActivity {
             public void onClick(View view) {
                 method = Method.CURRENT;
                 checkLocationServices();
+            }
+        });
+        bGalleryActivityResultAPI.setOnClickListener(new View.OnClickListener(){
+            @Override
+            public void onClick(View view) {
+                method = Method.CURRENT;
+                openGallery();
             }
         });
 
@@ -121,6 +149,15 @@ public class MainActivity extends AppCompatActivity {
                     tvLocationServicesActivityResultAPI.setText("Location Services has been turned On from Settings!");
                 } else if(result == Activity.RESULT_CANCELED) {
                     tvLocationServicesActivityResultAPI.setText("Location Services Off!");
+                }
+            }
+        });
+
+        galleryActivityResultLauncher = registerForActivityResult(new GalleryActivityResultContract(), new ActivityResultCallback<Uri>() {
+            @Override
+            public void onActivityResult(Uri result) {
+                if(result != null) { //If the Uri we got from the intent isn't empty, serialize the image.
+                    serializeImage(result);
                 }
             }
         });
@@ -223,9 +260,41 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
+    private void openGallery() {
+        if(method.equals(Method.DEPRECATED)) {
+            Intent gallery = new Intent(Intent.ACTION_PICK);
+            gallery.setType("image/*");
+            startActivityForResult(gallery, GALLERY_REQUEST_CODE);
+        } else if(method.equals(Method.CURRENT)) {
+            Intent gallery = new Intent(Intent.ACTION_PICK);
+            gallery.setType("image/*");
+            galleryActivityResultLauncher.launch(gallery);
+        }
+    }
+
+    private void serializeImage(Uri selectedImageUri) {
+        if(method.equals(Method.DEPRECATED)) {
+            ivGalleryStartActivityForResult.setImageURI(selectedImageUri);
+        } else if(method.equals(Method.CURRENT)){
+            ivGalleryActivityResultAPI.setImageURI(selectedImageUri);
+        }
+
+        Bitmap bitmap = null;
+        try {
+            bitmap = MediaStore.Images.Media.getBitmap(this.getContentResolver(), selectedImageUri);
+        } catch(IOException e){
+            e.printStackTrace();
+        }
+
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        bitmap.compress(Bitmap.CompressFormat.JPEG, 20, baos);
+        byte[] byteImage = baos.toByteArray();
+        String stringImage = Base64.encodeToString(byteImage, Base64.DEFAULT); //Serialized to be sent over a network and saved to a database.
+    }
+
     @Override
-    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
+    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent intent) {
+        super.onActivityResult(requestCode, resultCode, intent);
         //method is Method.DEPRECATED
         if(requestCode == NETWORK_SETTINGS_CODE) {
             network = connectivityManager.getActiveNetwork(); //To ensure user is still on the same network provider.
@@ -242,6 +311,11 @@ public class MainActivity extends AppCompatActivity {
             } else if (resultCode == Activity.RESULT_CANCELED) {
                 //Let the alert dialog start or continue showing since location services was not enabled in settings
                 tvLocationServicesStartActivityForResult.setText("Location Services Off!");
+            }
+        } else if(requestCode == GALLERY_REQUEST_CODE) {
+            if(resultCode == Activity.RESULT_OK && intent != null) {
+                Uri selectedImageUri = intent.getData();
+                serializeImage(selectedImageUri);
             }
         }
     }

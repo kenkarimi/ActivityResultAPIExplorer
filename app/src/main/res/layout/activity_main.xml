@@ -30,7 +30,18 @@
         android:layout_gravity="center"
         android:text=""
         android:id="@+id/tvLocationServicesStartActivityForResult" />
-
+    <Button
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:text="Gallery with startActivityForResult"
+        android:id="@+id/bGalleryStartActivityForResult" />
+    <ImageView
+        android:layout_width="80dp"
+        android:layout_height="80dp"
+        android:layout_gravity="center"
+        android:src="@drawable/ic_account_circle_48px"
+        android:id="@+id/ivGalleryStartActivityForResult" />
     <Button
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -56,4 +67,16 @@
         android:layout_gravity="center"
         android:text=""
         android:id="@+id/tvLocationServicesActivityResultAPI" />
+    <Button
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:text="Gallery with ActivityResultAPI"
+        android:id="@+id/bGalleryActivityResultAPI" />
+    <ImageView
+        android:layout_width="80dp"
+        android:layout_height="80dp"
+        android:layout_gravity="center"
+        android:src="@drawable/ic_account_circle_48px"
+        android:id="@+id/ivGalleryActivityResultAPI" />
 </LinearLayout>
